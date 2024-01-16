@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+
+  db:
+    container_name: mongo_db
+    image: mongo:latest
+    env_file:
+      - ./.env
+    environment:
+      - MONGO_DB_URL=${MONGO_DB_URL}
+      - MONGO_DB_NAME=${MONGO_DB_NAME}
+    ports:
+      - "27017:27017"
+    restart: "always"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: parser
+    env_file:
+      - ./.env
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    restart: "always"
