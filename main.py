@@ -1,6 +1,6 @@
 import uvicorn
 import asyncio
-# from common.config import fastapi_settings
+from common.config import fastapi_settings
 
 if __name__ == "__main__":
     uvicorn.run(

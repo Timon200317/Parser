@@ -15,5 +15,5 @@ class MongoSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="MONGO_")
 
 
-fast_api_settings = FastAPISettings()
+fastapi_settings = FastAPISettings()
 mongo_settings = MongoSettings()
