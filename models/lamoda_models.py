@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import datetime
 from typing import Optional
 
@@ -6,6 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class CategoryModel(BaseModel):
+    """Model for Lamoda Category"""
     category_name: str = Field(max_length=50)
     subcategory_name: str = Field(max_length=80)
     link: str = Field(max_length=100)
@@ -14,10 +16,11 @@ class CategoryModel(BaseModel):
 
 
 class ItemModel(BaseModel):
+    """Model for Lamoda Item"""
     name: str
     article: str = Field(max_length=15)
     category: CategoryModel
-    price: Decimal128
+    price: Decimal
     brand: str = Field(max_length=40)
     color: Optional[str]
     description: Optional[str]
