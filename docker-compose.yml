@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: parser
+    container_name: parsers
     env_file:
       - ./.env
     expose:

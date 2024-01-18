@@ -10,6 +10,7 @@ mypy = "*"
 pylint = "*"
 black = "*"
 pydantic-settings = "*"
+bs4 = "*"
 
 [dev-packages]
 
