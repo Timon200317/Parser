@@ -1,5 +1,6 @@
 from typing import List
 
+import aiohttp
 import requests
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException
@@ -9,17 +10,76 @@ from services.lamoda_db import LamodaServiceDatabase
 lamoda_mongo = LamodaServiceDatabase()
 category_router = APIRouter()
 
-lamoda_url = f"https://www.lamoda.by/"
+lamoda_url = "https://www.lamoda.by"
+
+lamoda_mongo = LamodaServiceDatabase()
+
+links = [
+    {
+        "gender": "Женщинам",
+        "url": "https://www.lamoda.by/c/4153/default-women/?is_new=1&sitelink=topmenuW&l=1",
+    },
+    {
+        "gender": "Мужчинам",
+        "url": "https://www.lamoda.by/c/4152/default-men/?is_new=1&sitelink=topmenuM&l=1",
+    },
+    {
+        "gender": "Детям",
+        "url": "https://www.lamoda.by/c/4154/default-kids/?genders=boys%2Cgirls&is_new=1&sitelink=topmenuK&l=2",
+    },
+]
 
 
-# @category_router.get(
-#     "/",
-#     response_description="List of all the categories",
-#     response_model=List[CategoryModel],
-# )
-# def list_lamoda_categories():
-#     categories = lamoda_mongo.list_lamoda_categories()
-#     return
+@category_router.get("api/v1/lamoda-major-categories/")
+async def get_lamoda_categories():
+    try:
+        result = []
+        for link in links:
+            result_link = link["gender"]
+            async with aiohttp.ClientSession() as session:
+                response = await session.get(url=link["url"])
+                soup = BeautifulSoup(await response.text(), "lxml")
+                major_categories = soup.find('nav').find_all("a")
+                list_categories = []
+                for category in major_categories:
+                    subcategories = await get_lamoda_subcategories(category["href"], session)
+                    list_categories.append({
+                        "category_name": category.text.strip(),
+                        "href": lamoda_url+category["href"],
+                        "subcategory": subcategories
+                    })
+                    CategoryModel(
+                        category_name=category.text.strip(),
+                        subcategory_name=subcategories,
+                        gender=link["gender"],
+                        link=lamoda_url+category["href"],
+                    )
+                result.append({
+                    "gender": result_link,
+                    "categories": list_categories,
+                })
+        return result
+
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
+
+
+async def get_lamoda_subcategories(url_main_category: str, session):
+    response = await session.get(url=lamoda_url + url_main_category)
+    soup = BeautifulSoup(await response.text(), "lxml")
+    subcategories = soup.find_all('ul', class_="x-tree-view-catalog-navigation__subtree")
+    result_list = []
+    for subcategory in subcategories:
+        subcategories_a = subcategory.find_all('a', class_="x-link x-link__label")
+        for subcategory_a in subcategories_a:
+            result_list.append(subcategory_a.text.strip())
+    return result_list
+
+
+async def get_lamoda_categories_to_insert_in_mongo():
+    """Main function for transform data from parse to mongo db"""
+    list_categories = await get_lamoda_categories()
+    await lamoda_mongo.parse_lamoda_categories(list_categories)
 
 
 @category_router.get("api/v1/lamoda-subcategories/")
@@ -99,12 +159,10 @@ async def get_lamoda_products(category: str, index: int):
         for product in products:
             brand_name = product.find('div', class_='x-product-card-description__brand-name').text.strip()
             product_name = product.find('div', class_='x-product-card-description__product-name').text.strip()
-            product_price = int(product.find('span', class_='x-product-card-description__price').text.strip())
             print(product)
             result.append({
                 "brand_name": brand_name,
                 "product_name": product_name,
-                "product_price": product_price
             })
 
         return result
