@@ -1,5 +1,7 @@
 from pymongo import MongoClient
 
+from models.lamoda_models import CategoryModel
+
 client = MongoClient("mongodb://localhost:27017/")
 
 # Выбираем базу данных

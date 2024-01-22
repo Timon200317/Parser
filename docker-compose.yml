@@ -2,17 +2,28 @@ version: '3.8'
 
 services:
 
-  db:
-    container_name: mongo_db
+#  db:
+#    container_name: mongo_db
+#    image: mongo:latest
+#    env_file:
+#      - ./.env
+#    environment:
+#      - MONGO_DB_URL=${MONGO_DB_URL}
+#      - MONGO_DB_NAME=${MONGO_DB_NAME}
+#    ports:
+#      - "27017:27017"
+#    restart: "always"
+  mongodb:
     image: mongo:latest
     env_file:
-      - ./.env
-    environment:
-      - MONGO_DB_URL=${MONGO_DB_URL}
-      - MONGO_DB_NAME=${MONGO_DB_NAME}
+      - .env
     ports:
       - "27017:27017"
-    restart: "always"
+    command:
+      mongod --quiet --logpath /dev/null
+    volumes:
+      - mongo_data:/var/lib/mongo/data/
+
 
   web:
     build:
@@ -22,9 +33,12 @@ services:
     env_file:
       - ./.env
     expose:
-      - "8000"
+      - "8001"
     ports:
-      - "8000:8000"
+      - "8001:8001"
     depends_on:
-      - db
+      - mongodb
     restart: "always"
+
+volumes:
+  mongo_data:

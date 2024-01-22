@@ -19,8 +19,8 @@ class MongoSettings(BaseSettings):
 
     class Config:
         env_file = ".env"
-        env_prefix = "MONGO_DB_"
+        env_prefix = "MONGO_DB_INITDB_"
 
 
 fast_api_settings = FastAPISettings()
-mongo_settings = MongoSettings()
+# mongo_settings = MongoSettings()

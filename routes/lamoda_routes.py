@@ -1,18 +1,23 @@
+import asyncio
+import logging
+from decimal import Decimal
 from typing import List
 
 import aiohttp
-import requests
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException
-from models.lamoda_models import CategoryModel
+import logging
+
+from models.lamoda_models import CategoryModel, ItemModel
+from parsers.lamoda_parser import get_lamoda_subcategories, get_urls_categories
 from services.lamoda_db import LamodaServiceDatabase
 
+logger = logging.getLogger(__name__)
 lamoda_mongo = LamodaServiceDatabase()
 category_router = APIRouter()
+item_router = APIRouter()
 
 lamoda_url = "https://www.lamoda.by"
-
-lamoda_mongo = LamodaServiceDatabase()
 
 links = [
     {
@@ -30,142 +35,182 @@ links = [
 ]
 
 
-@category_router.get("api/v1/lamoda-major-categories/")
+@category_router.get("/api/v1/lamoda-major-categories/")
 async def get_lamoda_categories():
     try:
+        final_categories_for_mongo = []
         result = []
-        for link in links:
-            result_link = link["gender"]
-            async with aiohttp.ClientSession() as session:
+        connector = aiohttp.TCPConnector(force_close=True)
+        timeout = aiohttp.ClientTimeout(total=9000)
+
+        async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+            tasks = []
+
+            for link in links:
+                result_link = link["gender"]
                 response = await session.get(url=link["url"])
                 soup = BeautifulSoup(await response.text(), "lxml")
                 major_categories = soup.find('nav').find_all("a")
                 list_categories = []
+
                 for category in major_categories:
                     subcategories = await get_lamoda_subcategories(category["href"], session)
                     list_categories.append({
                         "category_name": category.text.strip(),
-                        "href": lamoda_url+category["href"],
+                        "link": lamoda_url + category["href"],
                         "subcategory": subcategories
                     })
-                    CategoryModel(
+
+                    final_categories_for_mongo.append(CategoryModel(
                         category_name=category.text.strip(),
                         subcategory_name=subcategories,
                         gender=link["gender"],
-                        link=lamoda_url+category["href"],
-                    )
+                        link=lamoda_url + category["href"],
+                    ))
+
+                tasks.append(lamoda_mongo.parse_lamoda_categories(final_categories_for_mongo))
                 result.append({
                     "gender": result_link,
                     "categories": list_categories,
                 })
+
+            # Ждем завершения всех параллельных задач
+            await asyncio.gather(*tasks)
+
         return result
 
-    except requests.RequestException as e:
+    except aiohttp.ClientError as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
 
 
-async def get_lamoda_subcategories(url_main_category: str, session):
-    response = await session.get(url=lamoda_url + url_main_category)
-    soup = BeautifulSoup(await response.text(), "lxml")
-    subcategories = soup.find_all('ul', class_="x-tree-view-catalog-navigation__subtree")
-    result_list = []
-    for subcategory in subcategories:
-        subcategories_a = subcategory.find_all('a', class_="x-link x-link__label")
-        for subcategory_a in subcategories_a:
-            result_list.append(subcategory_a.text.strip())
-    return result_list
+@category_router.get("/api/v1/lamoda-get-items/")
+async def get_lamoda_items():
+    items = []
+    connector = aiohttp.TCPConnector(force_close=True)
+    timeout = aiohttp.ClientTimeout(total=9000)
+
+    async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+        urls = await get_urls_categories(session)
+        logger.info(f"Urls: {urls}")
+
+        if not urls:
+            await get_lamoda_categories()
+
+        for url in urls:
+            items += await fetch_category_items(url, session)
+
+    return items
 
 
-async def get_lamoda_categories_to_insert_in_mongo():
-    """Main function for transform data from parse to mongo db"""
-    list_categories = await get_lamoda_categories()
-    await lamoda_mongo.parse_lamoda_categories(list_categories)
+async def fetch_item(url, session):
+    async with session.get(url, headers=None) as response:
+        soup = BeautifulSoup(await response.text(), "lxml")
+
+        color = str()
+        product_info = soup.findAll("script")[6].text.strip()
+        color_index = soup.findAll("script")[6].text.strip().find("Цвет")
+        if color_index == -1:
+            color = "Не указан"
+        else:
+            color_index += 15
+
+            while product_info[color_index] != '"':
+                color += product_info[color_index]
+                color_index += 1
+
+        gender = soup.findAll("a", class_="x-link x-link__secondaryLabel")[
+            1
+        ].text.strip()
+        category = soup.findAll("a", class_="x-link x-link__secondaryLabel")[
+            2
+        ]
+        subcategories = await get_lamoda_subcategories(category["href"], session)
+        subcategory_link = soup.findAll("a", class_="x-link x-link__secondaryLabel")[
+            -1
+        ]["href"]
+
+        brand = soup.find(
+            "span", class_="x-premium-product-title__brand-name"
+        ).text.strip()
+        name = soup.find(
+            "div", class_="x-premium-product-title__model-name"
+        ).text.strip()
+        if soup.find("span", class_="x-premium-product-prices__price") is None:
+            return None
+        price_split = soup.find(
+            "span", class_="x-premium-product-prices__price"
+        ).text.split(" ")
+        price = (
+            "".join(price_split[:-1])
+            if price_split[-1] == "р."
+            else "".join(price_split)
+        )
+        info_value = soup.findAll(
+            "span", class_="x-premium-product-description-attribute__value"
+        )
+        info_name = soup.findAll(
+            "span", class_="x-premium-product-description-attribute__name"
+        )
+        info_result = {}
+
+        for i, d in zip(info_value, info_name):
+            info_result[d.text] = i.text
+        article = info_result["Артикул"]
+
+        item = ItemModel(
+            name=name,
+            article=article,
+            category=CategoryModel(
+                category_name=category.text.strip(),
+                subcategory_name=subcategories,
+                gender=gender,
+                link=subcategory_link,
+            ),
+            price=Decimal(price),
+            brand=brand,
+            color=color.capitalize(),
+        )
+        logger.info(f"Item info: {item}")
+
+        return item
 
 
-@category_router.get("api/v1/lamoda-subcategories/")
-async def get_item_info():
-    try:
-        # Отправляем GET-запрос к странице категории
-        response = requests.get(lamoda_url)
-        response.raise_for_status()  # Проверяем успешность запроса
+async def fetch_category_items(category_url, client):
 
-        # Создаем объект BeautifulSoup для парсинга HTML
-        soup = BeautifulSoup(response.text, 'html.parser')
+    items = []
+    async with client.get(category_url, headers=None) as response:
+        soup = BeautifulSoup(await response.text(), "lxml")
 
-        subcategories = soup.select(
-            "div[class=x-tree-view-catalog-navigation__category]",
+        items_url = soup.findAll(
+            "a", class_="x-product-card__link x-product-card__hit-area"
         )
 
-        print(subcategories)
+        for item_url in items_url:
+            fetch_items = await fetch_item(lamoda_url + item_url["href"], client)
+            if fetch_items is not None:
+                items.append(fetch_items)
 
-        if subcategories:
-            # Получаем текст из элемента и разделяем его на список категорий
-
-            return subcategories
-
-        else:
-            return []
-
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
+        return items
 
 
-@category_router.get("/api/v1/lamoda-categories/")
-async def get_all_categories():
-    lamoda_url = f"https://www.lamoda.by/"
-
-    try:
-        # Отправляем GET-запрос к странице категории
-        response = requests.get(lamoda_url)
-        response.raise_for_status()  # Проверяем успешность запроса
-
-        # Создаем объект BeautifulSoup для парсинга HTML
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        categories_element = soup.select_one('nav')
-
-        print(categories_element)
-
-        if categories_element:
-            # Получаем текст из элемента и разделяем его на список категорий
-            categories_list = [category.strip() for category in categories_element.stripped_strings]
-
-            return categories_list
-
-        else:
-            return []
-
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
+@category_router.get(
+    "/",
+    response_description="List of all the categories in mongo",
+    response_model=List[CategoryModel],
+)
+def list_lamoda_categories():
+    categories = lamoda_mongo.list_lamoda_categories()
+    return categories
 
 
-@category_router.get("/lamoda-products/{category}")
-async def get_lamoda_products(category: str, index: int):
-    lamoda_url = f"https://www.lamoda.by/c/{index}/{category}/"
+@item_router.get(
+    "/",
+    response_description="List of all the items in mongo",
+    response_model=List[ItemModel],
+)
+def list_lamoda_items():
+    items = lamoda_mongo.list_lamoda_items()
+    return items
 
-    try:
-        # Отправляем GET-запрос к странице категории
-        response = requests.get(lamoda_url)
-        response.raise_for_status()  # Проверяем успешность запроса
 
-        # Создаем объект BeautifulSoup для парсинга HTML
-        soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Находим все товары на странице
-
-        # Собираем информацию о товарах
-        result = []
-        products = soup.find_all('div', class_="x-product-card-description")
-        for product in products:
-            brand_name = product.find('div', class_='x-product-card-description__brand-name').text.strip()
-            product_name = product.find('div', class_='x-product-card-description__product-name').text.strip()
-            print(product)
-            result.append({
-                "brand_name": brand_name,
-                "product_name": product_name,
-            })
-
-        return result
-
-    except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
