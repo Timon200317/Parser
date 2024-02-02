@@ -63,8 +63,19 @@ class LamodaServiceDatabase:
     def delete_lamoda_category(self):
         return
 
-    async def parse_lamoda_items(self):
-        return
+    async def parse_lamoda_items(self, items: List[ItemModel]):
+        for item in items:
+            if (
+                    self.database["LamodaItemModels"].count_documents(
+                        {"article": item.article}
+                    )
+                    > 0
+            ):
+                self.database["LamodaItemModels"].find_one_and_replace(
+                    {"article": item.article}, item.model_dump()
+                )
+            else:
+                self.database["LamodaItemModels"].insert_one(item.model_dump())
 
     def list_lamoda_items(self):
         items_dict = self.database["LamodaItemModels"].find()

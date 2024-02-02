@@ -5,6 +5,7 @@ from typing import List
 
 import aiohttp
 from bs4 import BeautifulSoup
+from bson import Decimal128
 from fastapi import APIRouter, HTTPException
 import logging
 
@@ -35,7 +36,7 @@ links = [
 ]
 
 
-@category_router.get("/api/v1/lamoda-major-categories/")
+@category_router.get("/parse_categories")
 async def get_lamoda_categories():
     try:
         final_categories_for_mongo = []
@@ -83,22 +84,25 @@ async def get_lamoda_categories():
         raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
 
 
-@category_router.get("/api/v1/lamoda-get-items/")
+@item_router.get("/parse_items")
 async def get_lamoda_items():
     items = []
     connector = aiohttp.TCPConnector(force_close=True)
     timeout = aiohttp.ClientTimeout(total=9000)
 
     async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-        urls = await get_urls_categories(session)
+        tasks = []
+
+        urls = "https://www.lamoda.by/c/355/clothes-zhenskaya-odezhda/?l=2&sitelink=topmenuW"
         logger.info(f"Urls: {urls}")
 
-        if not urls:
-            await get_lamoda_categories()
+        # if not urls:
+        #     await get_lamoda_categories()
+        items += await fetch_category_items(urls, session)
+        tasks.append(lamoda_mongo.parse_lamoda_items(items))
 
-        for url in urls:
-            items += await fetch_category_items(url, session)
-
+        # Ждем завершения всех параллельных задач
+        await asyncio.gather(*tasks)
     return items
 
 
@@ -118,17 +122,9 @@ async def fetch_item(url, session):
                 color += product_info[color_index]
                 color_index += 1
 
-        gender = soup.findAll("a", class_="x-link x-link__secondaryLabel")[
-            1
-        ].text.strip()
         category = soup.findAll("a", class_="x-link x-link__secondaryLabel")[
             2
         ]
-        subcategories = await get_lamoda_subcategories(category["href"], session)
-        subcategory_link = soup.findAll("a", class_="x-link x-link__secondaryLabel")[
-            -1
-        ]["href"]
-
         brand = soup.find(
             "span", class_="x-premium-product-title__brand-name"
         ).text.strip()
@@ -160,13 +156,8 @@ async def fetch_item(url, session):
         item = ItemModel(
             name=name,
             article=article,
-            category=CategoryModel(
-                category_name=category.text.strip(),
-                subcategory_name=subcategories,
-                gender=gender,
-                link=subcategory_link,
-            ),
-            price=Decimal(price),
+            category=category.text.strip(),
+            price=Decimal128(Decimal(price)),
             brand=brand,
             color=color.capitalize(),
         )
@@ -176,7 +167,6 @@ async def fetch_item(url, session):
 
 
 async def fetch_category_items(category_url, client):
-
     items = []
     async with client.get(category_url, headers=None) as response:
         soup = BeautifulSoup(await response.text(), "lxml")
@@ -211,6 +201,3 @@ def list_lamoda_categories():
 def list_lamoda_items():
     items = lamoda_mongo.list_lamoda_items()
     return items
-
-
-
