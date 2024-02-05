@@ -15,6 +15,14 @@ class CategoryModel(BaseModel):
     date_created: datetime = Field(datetime.today(), frozen=True, repr=False)
 
 
+class UpdateCategoryModel(BaseModel):
+    category_name: Optional[str]
+    subcategory_name: Optional[str]
+    gender: Optional[str]
+    link: Optional[str]
+    gender: Optional[str]
+
+
 class ItemModel(BaseModel):
     """Model for Lamoda Item"""
     name: str
@@ -30,4 +38,12 @@ class ItemModel(BaseModel):
             Decimal128: lambda v: str(Decimal128(str(v))),
         }
         arbitrary_types_allowed = True
+
+
+class UpdateItemModel(BaseModel):
+    name: Optional[str]
+    category: Optional[CategoryModel]
+    brand: Optional[str]
+    color: Optional[str]
+    description: Optional[str]
 
