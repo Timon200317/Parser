@@ -42,8 +42,6 @@ class ItemModel(BaseModel):
 
 class UpdateItemModel(BaseModel):
     name: Optional[str]
-    category: Optional[CategoryModel]
     brand: Optional[str]
     color: Optional[str]
-    description: Optional[str]
 
