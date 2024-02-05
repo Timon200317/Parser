@@ -6,10 +6,12 @@ from typing import List
 import aiohttp
 from bs4 import BeautifulSoup
 from bson import Decimal128
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body, Response
 import logging
 
-from models.lamoda_models import CategoryModel, ItemModel
+from starlette import status
+
+from models.lamoda_models import CategoryModel, ItemModel, UpdateCategoryModel
 from parsers.lamoda_parser import get_lamoda_subcategories, get_urls_categories, fetch_category_items
 from services.lamoda_db import LamodaServiceDatabase
 
@@ -82,6 +84,64 @@ async def get_lamoda_categories():
 
     except aiohttp.ClientError as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve data from Lamoda: {str(e)}")
+
+
+@category_router.get(
+    "/{gender}/{subcategory}",
+    response_description="Retrieve a specific category by gender and subcategory",
+    response_model=CategoryModel,
+)
+def get_lamoda_category(subcategory_name: str, gender: str):
+    category = lamoda_mongo.find_lamoda_category(
+        {"subcategory_name": subcategory_name, "gender": gender}
+    )
+    if category is not None:
+        return category
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"There is no category with a subcategory_name {subcategory_name} for gender {gender}",
+        )
+
+
+@category_router.put(
+    "/{gender}/{subcategory}",
+    response_description="Update a category",
+    response_model=UpdateCategoryModel,
+)
+def update_lamoda_category(
+    subcategory_name: str,
+    gender: str,
+    category: UpdateCategoryModel = Body(...),
+):
+    existing_category = lamoda_mongo.update_lamoda_category(
+        {"subcategory_name": subcategory_name, "gender": gender}, category
+    )
+    if existing_category is not None:
+        return existing_category
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"There is no category with an subcategory_name {subcategory_name} for gender {gender}",
+        )
+
+
+@category_router.delete(
+    "/{category}/{subcategory}", response_description="Delete a category"
+)
+def delete_lamoda_category(subcategory_name: str, gender: str, response: Response):
+    delete_result = lamoda_mongo.delete_lamoda_category(
+        {"subcategory_name": subcategory_name, "gender": gender}
+    )
+
+    if delete_result == 1:
+        response.status_code = status.HTTP_204_NO_CONTENT
+        return response
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"There is no category with an id subcategory_name {subcategory_name} for gender {gender}",
+        )
 
 
 @item_router.get("/parse_items")

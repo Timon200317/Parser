@@ -8,7 +8,7 @@ from pymongo import MongoClient
 # from common.config import mongo_settings
 from models.lamoda_models import (
     CategoryModel,
-    ItemModel,
+    ItemModel, UpdateCategoryModel,
 )
 
 logger = logging.getLogger()
@@ -54,14 +54,30 @@ class LamodaServiceDatabase:
         categories = type_adapter.validate_python(categories_dict)
         return categories
 
-    def find_lamoda_category(self):
-        return
+    def find_lamoda_category(self, query):
+        category_dict = self.database["LamodaCategoryModels"].find_one(query)
+        if category_dict is None:
+            return None
+        type_adapter = TypeAdapter(CategoryModel)
+        category = type_adapter.validate_python(category_dict)
+        return category
 
-    def update_lamoda_category(self):
-        return
+    def update_lamoda_category(self, query, update: UpdateCategoryModel):
+        update_result = self.database["LamodaCategoryModels"].update_one(
+            query, {"$set": update.model_dump()}
+        )
+        if update_result.modified_count == 0:
+            return None
+        existing_category_dict = self.database["LamodaCategoryModels"].find_one(
+            update.model_dump()
+        )
+        type_adapter = TypeAdapter(CategoryModel)
+        existing_category = type_adapter.validate_python(existing_category_dict)
+        return existing_category
 
-    def delete_lamoda_category(self):
-        return
+    def delete_lamoda_category(self, query):
+        delete_result = self.database["LamodaCategoryModels"].delete_one(query)
+        return delete_result.deleted_count
 
     async def parse_lamoda_items(self, items: List[ItemModel]):
         for item in items:
