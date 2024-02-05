@@ -1,6 +1,9 @@
 import logging
 from decimal import Decimal
-
+from models.lamoda_models import (
+    CategoryModel,
+    ItemModel, UpdateCategoryModel, UpdateItemModel,
+)
 import aiohttp
 from bs4 import BeautifulSoup
 from bson import Decimal128

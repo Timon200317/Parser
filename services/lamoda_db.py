@@ -2,13 +2,16 @@ import logging
 import os
 from typing import List
 
+from bson import ObjectId
+from fastapi import HTTPException
 from pydantic import TypeAdapter
 from pymongo import MongoClient
+from starlette import status
 
 # from common.config import mongo_settings
 from models.lamoda_models import (
     CategoryModel,
-    ItemModel, UpdateCategoryModel,
+    ItemModel, UpdateCategoryModel, UpdateItemModel,
 )
 
 logger = logging.getLogger()
@@ -62,18 +65,18 @@ class LamodaServiceDatabase:
         category = type_adapter.validate_python(category_dict)
         return category
 
-    def update_lamoda_category(self, query, update: UpdateCategoryModel):
-        update_result = self.database["LamodaCategoryModels"].update_one(
-            query, {"$set": update.model_dump()}
-        )
-        if update_result.modified_count == 0:
-            return None
-        existing_category_dict = self.database["LamodaCategoryModels"].find_one(
-            update.model_dump()
-        )
-        type_adapter = TypeAdapter(CategoryModel)
-        existing_category = type_adapter.validate_python(existing_category_dict)
-        return existing_category
+    # def update_lamoda_category(self, query, update: UpdateCategoryModel):
+    #     update_result = self.database["LamodaCategoryModels"].update_one(
+    #         query, {"$set": update.model_dump()}
+    #     )
+    #     if update_result.modified_count == 0:
+    #         return None
+    #     existing_category_dict = self.database["LamodaCategoryModels"].find_one(
+    #         update.model_dump()
+    #     )
+    #     type_adapter = TypeAdapter(CategoryModel)
+    #     existing_category = type_adapter.validate_python(existing_category_dict)
+    #     return existing_category
 
     def delete_lamoda_category(self, query):
         delete_result = self.database["LamodaCategoryModels"].delete_one(query)
@@ -99,11 +102,30 @@ class LamodaServiceDatabase:
         items = type_adapter.validate_python(items_dict)
         return items
 
-    def find_lamoda_item(self):
-        return
+    def find_lamoda_item(self, query):
+        item_dict = self.database["LamodaItemModels"].find_one(query)
+        if item_dict is None:
+            return None
+        type_adapter = TypeAdapter(ItemModel)
+        item = type_adapter.validate_python(item_dict)
+        return item
 
-    def update_lamoda_item(self):
-        return
+    def update_lamoda_item(self, query, update: UpdateItemModel):
+        update = {
+            key: value
+            for key, value in update.model_dump().items()
+            if value is not None
+        }
+        update_result = self.database["LamodaItemModels"].update_one(
+            query, {"$set": update}
+        )
+        if update_result.modified_count == 0:
+            return None
+        existing_item_dict = self.database["LamodaItemModels"].find_one(update)
+        type_adapter = TypeAdapter(ItemModel)
+        existing_item = type_adapter.validate_python(existing_item_dict)
+        return existing_item
 
-    def delete_lamoda_item(self):
-        return
+    def delete_lamoda_item(self, query):
+        delete_result = self.database["LamodaItemModels"].delete_one(query)
+        return delete_result.deleted_count

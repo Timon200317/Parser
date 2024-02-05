@@ -11,7 +11,7 @@ import logging
 
 from starlette import status
 
-from models.lamoda_models import CategoryModel, ItemModel, UpdateCategoryModel
+from models.lamoda_models import CategoryModel, ItemModel, UpdateCategoryModel, UpdateItemModel
 from parsers.lamoda_parser import get_lamoda_subcategories, get_urls_categories, fetch_category_items
 from services.lamoda_db import LamodaServiceDatabase
 
@@ -104,27 +104,27 @@ def get_lamoda_category(subcategory_name: str, gender: str):
         )
 
 
-@category_router.put(
-    "/{gender}/{subcategory}",
-    response_description="Update a category",
-    response_model=UpdateCategoryModel,
-)
-def update_lamoda_category(
-    subcategory_name: str,
-    gender: str,
-    category: UpdateCategoryModel = Body(...),
-):
-    existing_category = lamoda_mongo.update_lamoda_category(
-        {"subcategory_name": subcategory_name, "gender": gender}, category
-    )
-    if existing_category is not None:
-        return existing_category
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"There is no category with an subcategory_name {subcategory_name} for gender {gender}",
-        )
-
+# @category_router.put(
+#     "/{gender}/{subcategory_name}",
+#     response_description="Update a category",
+#     response_model=CategoryModel,
+# )
+# def update_lamoda_category(
+#     gender: str,
+#     subcategory_name: str,
+#     category: UpdateCategoryModel = Body(...),
+# ):
+#     existing_category = lamoda_mongo.update_lamoda_category(
+#         {"subcategory_name": subcategory_name, "gender": gender}, category
+#     )
+#     if existing_category is not None:
+#         return existing_category
+#     else:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail=f"There is no category with subcategory_name {subcategory_name} for gender {gender}",
+#         )
+#
 
 @category_router.delete(
     "/{category}/{subcategory}", response_description="Delete a category"
@@ -184,3 +184,53 @@ def list_lamoda_categories():
 def list_lamoda_items():
     items = lamoda_mongo.list_lamoda_items()
     return items
+
+
+@item_router.get(
+    "/{article}",
+    response_description="Retrieve a specific item by article",
+    response_model=ItemModel,
+)
+def get_lamoda_item(article: str):
+    item = lamoda_mongo.find_lamoda_item({"article": article})
+    if item is not None:
+        return item
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"There is no item with an article {article}",
+    )
+
+
+@item_router.put(
+    "/{article}",
+    response_description="Update an item",
+    response_model=UpdateItemModel,
+)
+def update_lamoda_item(
+    article: str,
+    item: UpdateItemModel = Body(...),
+):
+    existing_item = lamoda_mongo.update_lamoda_item({"article": article}, item)
+
+    if existing_item is not None:
+        return existing_item
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"There is no item with an article {article}",
+        )
+
+
+@item_router.delete("/{article}", response_description="Delete an item")
+def delete_lamoda_item(article: str, response: Response):
+    delete_result = lamoda_mongo.delete_lamoda_item({"article": article})
+
+    if delete_result == 1:
+        response.status_code = status.HTTP_204_NO_CONTENT
+        return response
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"There is no item with an article {article}",
+    )
+
