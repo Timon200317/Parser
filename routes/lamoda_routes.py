@@ -167,7 +167,7 @@ async def get_lamoda_items():
 
 
 @category_router.get(
-    "/",
+    "/lamoda_categories",
     response_description="List of all the categories in mongo",
     response_model=List[CategoryModel],
 )
@@ -177,7 +177,7 @@ def list_lamoda_categories():
 
 
 @item_router.get(
-    "/",
+    "/lamoda_items",
     response_description="List of all the items in mongo",
     response_model=List[ItemModel],
 )

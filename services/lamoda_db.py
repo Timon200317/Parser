@@ -1,36 +1,20 @@
 import logging
-import os
 from typing import List
 
-from bson import ObjectId
-from fastapi import HTTPException
 from pydantic import TypeAdapter
 from pymongo import MongoClient
-from starlette import status
 
-# from common.config import mongo_settings
+from common.mongo_config import MONGO_URI, MONGO_INITDB_DATABASE
 from models.lamoda_models import (
     CategoryModel,
-    ItemModel, UpdateCategoryModel, UpdateItemModel,
+    ItemModel, UpdateItemModel,
 )
 
 logger = logging.getLogger()
 
-MONGO_INITDB_DATABASE = os.getenv('MONGO_INITDB_DATABASE')
-MONGO_INITDB_ROOT_USERNAME = os.getenv('MONGO_INITDB_ROOT_USERNAME')
-MONGO_INITDB_ROOT_PASSWORD = os.getenv('MONGO_INITDB_ROOT_PASSWORD')
-MONGO_INITDB_PORT = os.getenv('MONGO_INITDB_PORT')
-MONGO_INITDB_HOST = os.getenv('MONGO_INITDB_HOST')
-
-MONGO_URI = (f"{MONGO_INITDB_DATABASE}://"
-             + f"{MONGO_INITDB_ROOT_USERNAME}:"
-             + f"{MONGO_INITDB_ROOT_PASSWORD}"
-             + f"@{MONGO_INITDB_DATABASE}:{MONGO_INITDB_PORT}")
-
 
 class LamodaServiceDatabase:
     def __init__(self):
-        print(MONGO_URI)
         self.mongo_client = MongoClient(MONGO_URI)
         self.database = self.mongo_client[MONGO_INITDB_DATABASE]
 
