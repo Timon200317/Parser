@@ -22,6 +22,7 @@ class MongoSettings(BaseSettings):
     host: str
 
     class Config:
+        env_file = ".env"
         env_prefix = "MONGO_INITDB_"
 
 
@@ -31,12 +32,20 @@ class MongoConfig:
         self.mongo_uri = f"{settings.database}://{settings.root_username}:{settings.root_password}@{settings.host}:{settings.port}"
 
 
+class KafkaSettings(BaseSettings):
+    bootstrap_servers: str
+
+    class Config:
+        env_file = ".env"
+        env_prefix = "KAFKA_"
+
+
 # Внедрение зависимости MongoSettings
 def get_mongo_settings() -> MongoSettings:
     return MongoSettings()
 
 
-# Внедрение зависимости MongoDBConfig
+# Внедрение зависимости MongoConfig
 def get_mongo_config(settings: MongoSettings = Depends(get_mongo_settings)) -> MongoConfig:
     return MongoConfig(settings=settings)
 
@@ -47,3 +56,4 @@ def get_fastapi_settings() -> FastAPISettings:
 
 fast_api_settings = FastAPISettings()
 mongo_settings = MongoSettings()
+kafka_settings = KafkaSettings()
