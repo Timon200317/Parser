@@ -40,6 +40,15 @@ class KafkaSettings(BaseSettings):
         env_prefix = "KAFKA_"
 
 
+class RedisSettings(BaseSettings):
+    host: str
+    port: int
+
+    class Config:
+        env_file = ".env"
+        env_prefix = "REDIS_"
+
+
 # Внедрение зависимости MongoSettings
 def get_mongo_settings() -> MongoSettings:
     return MongoSettings()
@@ -57,3 +66,4 @@ def get_fastapi_settings() -> FastAPISettings:
 fast_api_settings = FastAPISettings()
 mongo_settings = MongoSettings()
 kafka_settings = KafkaSettings()
+redis_settings = RedisSettings()

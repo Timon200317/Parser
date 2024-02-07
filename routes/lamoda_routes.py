@@ -1,18 +1,11 @@
-import asyncio
-import logging
-from decimal import Decimal
-from typing import List
 
-import aiohttp
-from bs4 import BeautifulSoup
-from bson import Decimal128
+from typing import List
 from fastapi import APIRouter, HTTPException, Body, Response
 import logging
 
 from starlette import status
-
-from models.lamoda_models import CategoryModel, ItemModel, UpdateCategoryModel, UpdateItemModel
-from parsers.lamoda_parser import get_lamoda_subcategories, get_urls_categories, fetch_category_items
+from fastapi_cache.decorator import cache
+from models.lamoda_models import CategoryModel, ItemModel, UpdateItemModel
 from services.kafka import KafkaService
 from services.lamoda_db import LamodaServiceDatabase
 
@@ -98,6 +91,7 @@ async def parse_lamoda_items():
     response_description="Retrieve a specific category by gender and subcategory",
     response_model=CategoryModel,
 )
+@cache(expire=360)
 def get_lamoda_category(subcategory_name: str, gender: str):
     category = lamoda_mongo.find_lamoda_category(
         {"subcategory_name": subcategory_name, "gender": gender}
@@ -161,6 +155,7 @@ async def parse_lamoda_items():
     response_description="List of all the categories in mongo",
     response_model=List[CategoryModel],
 )
+# @cache(expire=60)
 def list_lamoda_categories():
     categories = lamoda_mongo.list_lamoda_categories()
     return categories
@@ -171,6 +166,7 @@ def list_lamoda_categories():
     response_description="List of all the items in mongo",
     response_model=List[ItemModel],
 )
+@cache(expire=360)
 def list_lamoda_items():
     items = lamoda_mongo.list_lamoda_items()
     return items
@@ -181,6 +177,7 @@ def list_lamoda_items():
     response_description="Retrieve a specific item by article",
     response_model=ItemModel,
 )
+@cache(expire=360)
 def get_lamoda_item(article: str):
     item = lamoda_mongo.find_lamoda_item({"article": article})
     if item is not None:
