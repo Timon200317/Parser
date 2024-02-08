@@ -155,7 +155,7 @@ async def parse_lamoda_items():
     response_description="List of all the categories in mongo",
     response_model=List[CategoryModel],
 )
-# @cache(expire=60)
+@cache(expire=60)
 def list_lamoda_categories():
     categories = lamoda_mongo.list_lamoda_categories()
     return categories

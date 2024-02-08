@@ -1,5 +1,5 @@
 import logging
-
+import asyncio
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 
@@ -14,7 +14,7 @@ class KafkaService:
                 bootstrap_servers=kafka_settings.bootstrap_servers
             )
             self.topics = [
-                NewTopic(name="lamoda", num_partitions=2, replication_factor=1),
+                NewTopic(name="lamoda", num_partitions=3, replication_factor=1),
             ]
             self.admin_client.create_topics(self.topics)
         except Exception:

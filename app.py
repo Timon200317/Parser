@@ -1,10 +1,11 @@
 import asyncio
 
-from dotenv import load_dotenv
+import aioredis
 from fastapi import FastAPI, Depends
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
-from redis import asyncio as aioredis
+
+from dotenv import load_dotenv
 
 from common.config import FastAPISettings, get_fastapi_settings, MongoConfig, \
     get_mongo_config, redis_settings
@@ -18,12 +19,12 @@ kafka = KafkaService()
 
 @app.on_event("startup")
 async def startup():
-    redis = aioredis.from_url(f"redis://{redis_settings.host}/{redis_settings.port}")
+    redis = aioredis.from_url(f"redis://{redis_settings.host}:{redis_settings.port}")
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 
 async def consume():
-    await kafka.consume_messages("lamoda")
+    await kafka.consume_messages(["lamoda",])
 
 asyncio.create_task(consume())
 
