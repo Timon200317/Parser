@@ -5,6 +5,7 @@ from kafka.admin import KafkaAdminClient, NewTopic
 
 from common.config import kafka_settings
 from parsers.lamoda_parser import get_lamoda_categories, get_lamoda_items
+from parsers.twitch_parser import insert_twitch_games_in_mongo
 
 
 class KafkaService:
@@ -15,6 +16,7 @@ class KafkaService:
             )
             self.topics = [
                 NewTopic(name="lamoda", num_partitions=3, replication_factor=1),
+                NewTopic(name="twitch", num_partitions=3, replication_factor=1),
             ]
             self.admin_client.create_topics(self.topics)
         except Exception:
@@ -49,6 +51,18 @@ class KafkaService:
         except Exception as e:
             self.logger.error(f"Got an error {e} when processing a message")
 
+    async def process_twitch_message(self, message, key):
+        try:
+            self.logger.info(f"Processing a message: {message}")
+            if key == b"games":
+                await insert_twitch_games_in_mongo()
+            elif key == b"streamers":
+                await get_lamoda_items()
+            elif key == b"streams":
+                await get_lamoda_items()
+        except Exception as e:
+            self.logger.error(f"Got an error {e} when processing a message")
+
     async def consume_messages(self, topics):
         self.consumer.subscribe(topics)
         try:
@@ -57,6 +71,8 @@ class KafkaService:
                 self.logger.info(f"Received a message: {message}")
                 if message.topic == "lamoda":
                     await self.process_lamoda_message(message.value, message.key)
+                elif message.topic == "twitch":
+                    await self.process_twitch_message(message.value, message.key)
         except Exception as e:
             self.logger.error(f"Got an error {e} when consuming a message")
         finally:

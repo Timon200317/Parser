@@ -4,8 +4,9 @@ from pydantic import BaseModel, Field
 
 class Game(BaseModel):
     """Model for Twitch Game"""
-    name: str = Field(max_length=50)
-    genre: str = Field(max_length=50)
+    game_id: str
+    name: str
+    viewers: int = Field(ge=0, default=0)
     date_created: datetime = Field(datetime.today(), frozen=True, repr=False)
 
 

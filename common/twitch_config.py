@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class TwitchSettings(BaseSettings):
-    id: str
+    client_id: str
     client_secret: str
 
     class Config:

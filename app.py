@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from common.config import FastAPISettings, get_fastapi_settings, MongoConfig, \
     get_mongo_config, redis_settings
 from routes.lamoda_routes import category_router as lamoda_category_router, item_router as lamoda_item_router
+from routes.twitch_routes import games_router as twitch_games_router
 from services.kafka import KafkaService
 
 load_dotenv()
@@ -24,7 +25,7 @@ async def startup():
 
 
 async def consume():
-    await kafka.consume_messages(["lamoda",])
+    await kafka.consume_messages(["lamoda", "twitch"])
 
 asyncio.create_task(consume())
 
@@ -49,4 +50,10 @@ app.include_router(
     lamoda_item_router,
     tags=["Lamoda items"],
     prefix="/api/v1/lamoda-items",
+)
+
+app.include_router(
+    twitch_games_router,
+    tags=["Twitch games"],
+    prefix="/api/v1/twitch-games",
 )
