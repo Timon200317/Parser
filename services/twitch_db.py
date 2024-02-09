@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from pymongo import MongoClient
 
 from common.mongo_config import MONGO_URI, MONGO_INITDB_DATABASE
-from models.twitch_models import Game, Stream
+from models.twitch_models import Game, Stream, Streamer
 
 logger = logging.getLogger()
 
@@ -61,6 +61,23 @@ class TwitchServiceDatabase:
                 # write data in model
                 self.database["Stream"].insert_one(stream.model_dump())
 
+    async def parse_twitch_streamers(self, streamers: List[Streamer]):
+        for streamer in streamers:
+            if (
+                    # if model have this instance count_document will be equal 1
+                    self.database["Streamer"].count_documents(
+                        {"streamer_id": streamer.streamer_id}
+                    )
+                    > 0
+            ):
+                # update exist data
+                self.database["Streamer"].find_one_and_replace(
+                    {"streamer_id": streamer.streamer_id}, streamer.model_dump()
+                )
+            else:
+                # write data in model
+                self.database["Streamer"].insert_one(streamer.model_dump())
+
     def list_twitch_games(self):
         games_dict = self.database["Game"].find()
         type_adapter = TypeAdapter(List[Game])
@@ -72,4 +89,10 @@ class TwitchServiceDatabase:
         type_adapter = TypeAdapter(List[Stream])
         streams = type_adapter.validate_python(streams_dict)
         return streams
+
+    def list_twitch_streamers(self):
+        streamers_dict = self.database["Streamer"].find()
+        type_adapter = TypeAdapter(List[Streamer])
+        streamers = type_adapter.validate_python(streamers_dict)
+        return streamers
 

@@ -14,8 +14,13 @@ class Game(BaseModel):
 
 class Streamer(BaseModel):
     """Model for Twitch Streamer"""
-    user_id: str
+    streamer_id: str
+    is_live: bool
+    stream_title: str
+    game_id: str
+    game_name: str
     user_name: str
+    tags: List[str]
     followers: int
     date_created: datetime = Field(datetime.today(), frozen=True, repr=False)
 

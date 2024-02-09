@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 from common.config import FastAPISettings, get_fastapi_settings, MongoConfig, \
     get_mongo_config, redis_settings
 from routes.lamoda_routes import category_router as lamoda_category_router, item_router as lamoda_item_router
-from routes.twitch_routes import games_router as twitch_games_router, streams_router as twitch_streams_router
+from routes.twitch_routes import (games_router as twitch_games_router, streams_router as twitch_streams_router,
+                                  streamers_router as twitch_streamers_router)
 from services.kafka import KafkaService
 
 load_dotenv()
@@ -62,4 +63,10 @@ app.include_router(
     twitch_streams_router,
     tags=["Twitch streams"],
     prefix="/api/v1/twitch-streams",
+)
+
+app.include_router(
+    twitch_streamers_router,
+    tags=["Twitch streamers"],
+    prefix="/api/v1/twitch-streamers",
 )

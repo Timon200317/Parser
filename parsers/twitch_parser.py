@@ -82,6 +82,49 @@ async def fetch_streams():
     return streams
 
 
+async def fetch_streamers():
+    headers = await get_auth_for_api()
+    streams = await fetch_streams()
+    streamers = []
+
+    for stream in streams:
+        users_url = "https://api.twitch.tv/helix/users"
+        users_params = {"first": 100, "id": str(stream.user_id)}
+        async with aiohttp.ClientSession() as client:
+            response = await client.get(users_url, headers=headers, params=users_params)
+            users_data_json = await response.json()
+            users_data = users_data_json["data"]
+            for user in users_data:
+                channel_url = "https://api.twitch.tv/helix/channels"
+                followers_url = "https://api.twitch.tv/helix/channels/followers"
+                channel_params = {"broadcaster_id": int(user["id"])}
+                channel_response = await client.get(
+                    channel_url, headers=headers, params=channel_params
+                )
+                followers_response = await client.get(
+                    followers_url, headers=headers, params=channel_params
+                )
+                followers_json = await followers_response.json()
+                followers = followers_json["total"]
+                channel_data_json = await channel_response.json()
+                channel_data = channel_data_json["data"][0]
+                streamers.append(
+                    Streamer(
+                        streamer_id=channel_data["broadcaster_id"],
+                        user_name=channel_data["broadcaster_name"],
+                        is_live=True,
+                        followers=followers,
+                        game_id=channel_data["game_id"],
+                        game_name=channel_data["game_name"],
+                        stream_title=channel_data["title"],
+                        tags=channel_data["tags"],
+                        date_item_created=user["created_at"],
+                    )
+                )
+
+    return streamers
+
+
 async def insert_twitch_games_in_mongo():
     games = await fetch_games()
     await twitch_mongo.parse_twitch_games(games)
@@ -90,3 +133,8 @@ async def insert_twitch_games_in_mongo():
 async def insert_twitch_streams_in_mongo():
     streams = await fetch_streams()
     await twitch_mongo.parse_twitch_streams(streams)
+
+
+async def insert_twitch_streamers_in_mongo():
+    streams = await fetch_streamers()
+    await twitch_mongo.parse_twitch_streamers(streams)
