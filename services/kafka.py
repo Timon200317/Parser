@@ -5,7 +5,7 @@ from kafka.admin import KafkaAdminClient, NewTopic
 
 from common.config import kafka_settings
 from parsers.lamoda_parser import get_lamoda_categories, get_lamoda_items
-from parsers.twitch_parser import insert_twitch_games_in_mongo
+from parsers.twitch_parser import insert_twitch_games_in_mongo, insert_twitch_streams_in_mongo
 
 
 class KafkaService:
@@ -59,7 +59,7 @@ class KafkaService:
             elif key == b"streamers":
                 await get_lamoda_items()
             elif key == b"streams":
-                await get_lamoda_items()
+                await insert_twitch_streams_in_mongo()
         except Exception as e:
             self.logger.error(f"Got an error {e} when processing a message")
 

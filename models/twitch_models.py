@@ -1,4 +1,6 @@
 from datetime import datetime
+from typing import List
+
 from pydantic import BaseModel, Field
 
 
@@ -12,15 +14,22 @@ class Game(BaseModel):
 
 class Streamer(BaseModel):
     """Model for Twitch Streamer"""
-    username: str = Field(max_length=128)
-    platform: str = Field(max_length=50)
+    user_id: str
+    user_name: str
+    followers: int
     date_created: datetime = Field(datetime.today(), frozen=True, repr=False)
 
 
-class TwitchStream(BaseModel):
+class Stream(BaseModel):
     """Model for Twitch Stream"""
-    title: str = Field(max_length=100)
+    stream_id: str
+    # game_name: str
+    # game_id: str
+    user_id: str
+    user_name: str
+    type: str
+    title: str
     viewers: int
-    streamer: Streamer
-    game: Game
+    language: str
+    tags: List[str]
     date_created: datetime = Field(datetime.today(), frozen=True, repr=False)

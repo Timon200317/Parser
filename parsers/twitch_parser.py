@@ -1,7 +1,7 @@
 import aiohttp
 
 from common.twitch_config import twitch_settings
-from models.twitch_models import Game
+from models.twitch_models import Game, Stream, Streamer
 from services.twitch_db import TwitchServiceDatabase
 
 twitch_mongo = TwitchServiceDatabase()
@@ -54,6 +54,41 @@ async def fetch_games():
     return games
 
 
+async def fetch_streams():
+    headers = await get_auth_for_api()
+    streams_url = "https://api.twitch.tv/helix/streams"
+    streams = []
+
+    streams_params = {"first": 100}
+    async with aiohttp.ClientSession() as client:
+        response = await client.get(streams_url, headers=headers, params=streams_params)
+        json_data = await response.json()
+        data = json_data["data"]
+
+        for stream in data:
+
+            stream_model = Stream(
+                stream_id=stream["id"],
+                # game_name=stream["game_name"],
+                # game_id=stream["game_id"],
+                type=stream["type"],
+                title=stream["title"],
+                viewers=stream["viewer_count"],
+                language=stream["language"],
+                tags=stream["tags"],
+                user_id=stream["user_id"],
+                user_name=stream["user_name"],
+            )
+            streams.append(stream_model)
+
+    return streams
+
+
 async def insert_twitch_games_in_mongo():
     games = await fetch_games()
     await twitch_mongo.parse_twitch_games(games)
+
+
+async def insert_twitch_streams_in_mongo():
+    streams = await fetch_streams()
+    await twitch_mongo.parse_twitch_streams(streams)
