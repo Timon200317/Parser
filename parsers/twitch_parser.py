@@ -69,8 +69,6 @@ async def fetch_streams():
 
             stream_model = Stream(
                 stream_id=stream["id"],
-                # game_name=stream["game_name"],
-                # game_id=stream["game_id"],
                 type=stream["type"],
                 title=stream["title"],
                 viewers=stream["viewer_count"],

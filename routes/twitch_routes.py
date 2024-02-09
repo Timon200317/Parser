@@ -3,7 +3,7 @@ from typing import List
 
 from fastapi import APIRouter
 
-from models.twitch_models import Game
+from models.twitch_models import Game, Stream
 from parsers.twitch_parser import fetch_games, fetch_streams
 from services.kafka import KafkaService
 from services.twitch_db import TwitchServiceDatabase
@@ -44,7 +44,7 @@ def list_twitch_games():
 @streams_router.get(
     "/twitch_streams",
     response_description="List of all the twitch streams in mongo",
-    response_model=List[Game],
+    response_model=List[Stream],
 )
 @cache(expire=360)
 def list_twitch_streams():

@@ -23,8 +23,6 @@ class Streamer(BaseModel):
 class Stream(BaseModel):
     """Model for Twitch Stream"""
     stream_id: str
-    # game_name: str
-    # game_id: str
     user_id: str
     user_name: str
     type: str
