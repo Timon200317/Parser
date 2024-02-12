@@ -2,43 +2,66 @@ version: '3.8'
 
 services:
 
-#  db:
-#    container_name: mongo_db
-#    image: mongo:latest
-#    env_file:
-#      - ./.env
-#    environment:
-#      - MONGO_DB_URL=${MONGO_DB_URL}
-#      - MONGO_DB_NAME=${MONGO_DB_NAME}
-#    ports:
-#      - "27017:27017"
-#    restart: "always"
   mongodb:
-    image: mongo:latest
-    env_file:
-      - .env
-    ports:
-      - "27017:27017"
-    command:
-      mongod --quiet --logpath /dev/null
-    volumes:
-      - mongo_data:/var/lib/mongo/data/
+      image: mongo:latest
+      env_file:
+        - .env
+      ports:
+        - "27017:27017"
+      command:
+        mongod --quiet --logpath /dev/null
+      volumes:
+        - mongo_data:/var/lib/mongo/data/
 
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: parsers
-    env_file:
-      - ./.env
-    expose:
-      - "8001"
+      build:
+        context: .
+        dockerfile: Dockerfile
+      container_name: parsers
+      env_file:
+        - ./.env
+      expose:
+        - "8001"
+      ports:
+        - "8001:8001"
+      depends_on:
+        - mongodb
+      restart: "always"
+
+  kafka:
+      container_name: kafka
+      image: bitnami/kafka:latest
+      ports:
+        - '9092:9092'
+      environment:
+        - KAFKA_ADVERTISED_LISTENERS=${KAFKA_ADVERTISED_LISTENERS}
+        - KAFKA_LISTENERS=${KAFKA_LISTENERS}
+        - KAFKA_ZOOKEEPER_CONNECT=${KAFKA_ZOOKEEPER_CONNECT}
+
+  zookeeper:
+      container_name: zookeeper
+      image: bitnami/zookeeper:latest
+      ports:
+        - '2181:2181'
+      environment:
+        - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka-ui:
+      container_name: kafka-ui
+      image: provectuslabs/kafka-ui:latest
+      ports:
+        - "8082:8080"
+      environment:
+        DYNAMIC_CONFIG_ENABLED: true
+
+
+  redis:
+    image: redis:7.0.5-alpine
+    hostname: redis
     ports:
-      - "8001:8001"
-    depends_on:
-      - mongodb
-    restart: "always"
+      - "6379:6379"
+
 
 volumes:
   mongo_data:
