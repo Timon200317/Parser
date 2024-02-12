@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from pymongo import MongoClient
 
 from common.mongo_config import MONGO_URI, MONGO_INITDB_DATABASE
-from models.twitch_models import Game, Stream, Streamer
+from models.twitch_models import Game, Stream, Streamer, UpdateStreamer, UpdateStream, UpdateGame
 
 logger = logging.getLogger()
 
@@ -84,11 +84,78 @@ class TwitchServiceDatabase:
         games = type_adapter.validate_python(games_dict)
         return games
 
+    def find_twitch_game(self, query):
+        game_dict = self.database["TwitchGameModels"].find_one(query)
+        if game_dict is None:
+            return None
+        type_adapter = TypeAdapter(Game)
+        game = type_adapter.validate_python(game_dict)
+        return game
+
+    def update_twitch_game(self, query, update: UpdateGame):
+        update = {
+            key: value
+            for key, value in update.model_dump().items()
+            if value is not None
+        }
+        update_result = self.database["Game"].update_one(
+            query, {"$set": update}
+        )
+        if update_result.modified_count == 0:
+            return None
+        existing_game_dict = self.database["Game"].find_one(update)
+        type_adapter = TypeAdapter(Game)
+        existing_game = type_adapter.validate_python(existing_game_dict)
+        return existing_game
+
+    def delete_twitch_game(self, query):
+        delete_result = self.database["Game"].delete_one(query)
+        return delete_result.deleted_count
+
     def list_twitch_streams(self):
         streams_dict = self.database["Stream"].find()
         type_adapter = TypeAdapter(List[Stream])
         streams = type_adapter.validate_python(streams_dict)
         return streams
+
+    def find_twitch_stream(self, query):
+        stream_dict = self.database["Stream"].find_one(query)
+        if stream_dict is None:
+            return None
+        type_adapter = TypeAdapter(Stream)
+        stream = type_adapter.validate_python(stream_dict)
+        return stream
+
+    def update_twitch_stream(self, query, update: UpdateStream):
+        # Create the update dictionary with non-None values from UpdateStream
+        update_data = {
+            key: value
+            for key, value in update.model_dump().items()
+            if value is not None
+        }
+
+        # Print or log the update data for debugging
+        print("Update Data:", update_data)
+
+        # Perform the update using update_one
+        update_result = self.database["Stream"].update_one(
+            query, {"$set": update_data}
+        )
+
+        # Check if any documents were modified
+        if update_result.modified_count == 0:
+            return None
+
+        # Find the updated document and convert it back to Stream instance
+        existing_item_dict = self.database["Stream"].find_one(query)
+        type_adapter = TypeAdapter(Stream)
+        existing_item = type_adapter.validate_python(existing_item_dict)
+
+        return existing_item
+
+    def delete_twitch_stream(self, query):
+        delete_result = self.database["Stream"].delete_one(query)
+        return delete_result.deleted_count
 
     def list_twitch_streamers(self):
         streamers_dict = self.database["Streamer"].find()
@@ -96,3 +163,41 @@ class TwitchServiceDatabase:
         streamers = type_adapter.validate_python(streamers_dict)
         return streamers
 
+    def find_twitch_streamer(self, query):
+        streamer_dict = self.database["Streamer"].find_one(query)
+        if streamer_dict is None:
+            return None
+        type_adapter = TypeAdapter(Streamer)
+        streamer = type_adapter.validate_python(streamer_dict)
+        return streamer
+
+    def update_twitch_streamer(self, query, update: UpdateStreamer):
+        # Create the update dictionary with non-None values from UpdateStreamer
+        update_data = {
+            key: value
+            for key, value in update.model_dump().items()
+            if value is not None
+        }
+
+        # Print or log the update data for debugging
+        print("Update Data:", update_data)
+
+        # Perform the update using update_one
+        update_result = self.database["Streamer"].update_one(
+            query, {"$set": update_data}
+        )
+
+        # Check if any documents were modified
+        if update_result.modified_count == 0:
+            return None
+
+        # Find the updated document and convert it back to Streamer instance
+        existing_item_dict = self.database["Streamer"].find_one(query)
+        type_adapter = TypeAdapter(Streamer)
+        existing_item = type_adapter.validate_python(existing_item_dict)
+
+        return existing_item
+
+    def delete_twitch_streamer(self, query):
+        delete_result = self.database["Streamer"].delete_one(query)
+        return delete_result.deleted_count

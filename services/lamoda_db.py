@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from common.mongo_config import MONGO_URI, MONGO_INITDB_DATABASE
 from models.lamoda_models import (
     CategoryModel,
-    ItemModel, UpdateItemModel,
+    ItemModel, UpdateItemModel, UpdateCategoryModel,
 )
 
 logger = logging.getLogger()
@@ -49,18 +49,18 @@ class LamodaServiceDatabase:
         category = type_adapter.validate_python(category_dict)
         return category
 
-    # def update_lamoda_category(self, query, update: UpdateCategoryModel):
-    #     update_result = self.database["LamodaCategoryModels"].update_one(
-    #         query, {"$set": update.model_dump()}
-    #     )
-    #     if update_result.modified_count == 0:
-    #         return None
-    #     existing_category_dict = self.database["LamodaCategoryModels"].find_one(
-    #         update.model_dump()
-    #     )
-    #     type_adapter = TypeAdapter(CategoryModel)
-    #     existing_category = type_adapter.validate_python(existing_category_dict)
-    #     return existing_category
+    def update_lamoda_category(self, query, update: UpdateCategoryModel):
+        update_result = self.database["LamodaCategoryModels"].update_one(
+            query, {"$set": update.model_dump()}
+        )
+        if update_result.modified_count == 0:
+            return None
+        existing_category_dict = self.database["LamodaCategoryModels"].find_one(
+            update.model_dump()
+        )
+        type_adapter = TypeAdapter(CategoryModel)
+        existing_category = type_adapter.validate_python(existing_category_dict)
+        return existing_category
 
     def delete_lamoda_category(self, query):
         delete_result = self.database["LamodaCategoryModels"].delete_one(query)
