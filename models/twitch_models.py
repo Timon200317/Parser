@@ -55,6 +55,7 @@ class Stream(BaseModel):
 class UpdateStream(BaseModel):
     title: Optional[str]
     user_id: Optional[str]
+    user_name: Optional[str]
     viewers: Optional[int]
     language: Optional[str]
     tags: Optional[List[str]]
