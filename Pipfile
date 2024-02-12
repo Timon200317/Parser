@@ -10,6 +10,9 @@ mypy = "*"
 pylint = "*"
 black = "*"
 pydantic-settings = "*"
+bs4 = "*"
+aiohttp = "*"
+lxml = "*"
 
 [dev-packages]
 
