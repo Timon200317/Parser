@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from decimal import Decimal
 from models.lamoda_models import (
     CategoryModel,
@@ -137,7 +138,6 @@ async def get_lamoda_categories():
         timeout = aiohttp.ClientTimeout(total=9000)
 
         async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-            tasks = []
 
             for link in links:
                 result_link = link["gender"]
@@ -161,14 +161,10 @@ async def get_lamoda_categories():
                         link=lamoda_url + category["href"],
                     ))
 
-                tasks.append(lamoda_mongo.parse_lamoda_categories(final_categories_for_mongo))
                 result.append({
                     "gender": result_link,
                     "categories": list_categories,
                 })
-
-            # Ждем завершения всех параллельных задач
-            await asyncio.gather(*tasks)
 
         return result
 
@@ -181,14 +177,19 @@ async def get_lamoda_items():
     timeout = aiohttp.ClientTimeout(total=9000)
 
     async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
-        tasks = []
-
         urls = "https://www.lamoda.by/c/355/clothes-zhenskaya-odezhda/?l=2&sitelink=topmenuW"
         logger.info(f"Urls: {urls}")
 
         items += await fetch_category_items(urls, session)
-        tasks.append(lamoda_mongo.parse_lamoda_items(items))
 
-        # Ждем завершения всех параллельных задач
-        await asyncio.gather(*tasks)
     return items
+
+
+async def insert_lamoda_categories():
+    categories = await get_lamoda_categories()
+    await lamoda_mongo.parse_lamoda_categories(categories)
+
+
+async def insert_lamoda_items():
+    items = await get_lamoda_items()
+    await lamoda_mongo.parse_lamoda_items(items)

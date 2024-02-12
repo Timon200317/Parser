@@ -17,7 +17,7 @@ class CategoryModel(BaseModel):
 
 class UpdateCategoryModel(BaseModel):
     category_name: Optional[str]
-    subcategory_name: Optional[str]
+    subcategory_name: List[Optional[str]]
     gender: Optional[str]
     link: Optional[str]
     gender: Optional[str]
